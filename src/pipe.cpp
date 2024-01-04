@@ -87,7 +87,7 @@ namespace pipe
     void init()
     {
         // just call this to init
-        get();
+        ::get();
     }
 
     void use()

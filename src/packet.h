@@ -27,6 +27,6 @@ public:
 
     constexpr std::size_t size() const { return m_packet_size; }
 
-    char recv_buf[m_packet_size+1];
-    char send_buf[m_packet_size+1]; 
+    char recv_buf[m_packet_size + 1];
+    char send_buf[m_packet_size + 1]; 
 };

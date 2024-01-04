@@ -3,6 +3,7 @@
 #include "debugger.h"
 #include "target.h"
 #include "hex.h"
+#include "log.h"
 
 #include <psp2kern/kernel/sysmem.h>
 
@@ -31,7 +32,7 @@ int WriteMemoryCommand::execute(Packet *packet)
 
     // TODO: check if dest write location is valid
     // TODO: check result
-    ksceKernelRxMemcpyKernelToUserForPid(target->pid, addr, packet->recv_buf, length);
+    auto res = ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)addr, packet->recv_buf, length);
 
     packet->send("OK");
     return 0;

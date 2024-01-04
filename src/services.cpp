@@ -46,7 +46,7 @@ int vdb_launch_debug(const char *executable)
     int state = 0;
     ENTER_SYSCALL(state);
     
-    auto res = ksceKernelStrncpyUserToKernel(path, reinterpret_cast<std::uintptr_t>(executable), maxStringLength);
+    auto res = ksceKernelStrncpyUserToKernel(path, executable, maxStringLength);
 
     if (res < 0)
     {

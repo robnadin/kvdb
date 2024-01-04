@@ -3,6 +3,7 @@
 
 #include <psp2kern/kernel/sysmem.h>
 #include <psp2kern/kernel/threadmgr.h>
+#include <psp2kern/kernel/sysmem/data_transfers.h>
 
 #include <string.h>
 
@@ -42,12 +43,12 @@ int PipeCache::write(const char *data, std::size_t size)
 
 int PipeCache::copyout(std::uintptr_t udata, std::size_t max_size, unsigned int timeout)
 {
-    return do_read(ksceKernelMemcpyKernelToUser, udata, max_size, timeout);
+    return do_read(ksceKernelCopyToUser, udata, max_size, timeout);
 }
 
 int PipeCache::copyin(std::uintptr_t udata, size_t size)
 {
-    return do_write(ksceKernelMemcpyUserToKernel, udata, size);
+    return do_write(ksceKernelCopyFromUser, udata, size);
 }
 
 std::size_t PipeCache::size() const
@@ -128,14 +129,14 @@ void PipeCache::read_cache(F f, Ptr data, std::size_t size)
     // this is where start_ptr will exceed buffer end
     if (size > end_copy_size) 
     {
-        f(data, &m_base[m_start_ptr], end_copy_size);
-        f(data + end_copy_size, m_base, size - end_copy_size);
+        f((void*)data, &m_base[m_start_ptr], end_copy_size);
+        f((void*)(data + end_copy_size), m_base, size - end_copy_size);
     }
 
     // no overlap with end of buffer, just copy straight
     else
     {
-        f(data, &m_base[m_start_ptr], size);
+        f((void*)data, &m_base[m_start_ptr], size);
     }
 
     m_start_ptr = (m_start_ptr + size) % m_size;
@@ -150,14 +151,14 @@ void PipeCache::write_cache(F f, Ptr data, std::size_t size)
     // this is where end_ptr will exceed buffer end
     if (size > end_copy_size) 
     {
-        f(&m_base[m_end_ptr], data, end_copy_size);
-        f(m_base, data + end_copy_size, size - end_copy_size);
+        f(&m_base[m_end_ptr], (void*)data, end_copy_size);
+        f(m_base, (void*)(data + end_copy_size), size - end_copy_size);
     }
 
     // no overlap with end of buffer, just copy straight
     else
     {
-        f(&m_base[m_end_ptr], data, size);
+        f(&m_base[m_end_ptr], (void*)data, size);
     }
 
     m_end_ptr = (m_end_ptr + size) % m_size;

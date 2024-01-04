@@ -4,10 +4,13 @@
 #include "eventflag.h"
 
 #include <psp2kern/kernel/sysmem.h>
+#include <psp2kern/kernel/sysroot.h>
 
 #include <cstdint>
 
 class Command;
+
+typedef int(*putchar_handler_t)(void*,char c);
 
 class Debugger
 {
@@ -38,11 +41,14 @@ public:
 
     Target *target();
     
+    uint32_t m_instruction = 0;
+    uint32_t m_pc_addr = 0;
+
 private:
     Debugger();
 
     int on_process_created();
-    static int on_process_created_handler();
+    static int on_process_created_handler(int a1, int a2, int a3);
 
     int on_putchar(char ch);
     static int putchar_handler(void *args, char ch);
@@ -64,6 +70,7 @@ private:
     char m_stdout_cache[32];
     int m_stdout_cache_indx = 0;
     State m_state = State::NotAttached;
+    putchar_handler_t m_previous_putchar_handler = nullptr;
 };
 
 namespace debugger

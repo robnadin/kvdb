@@ -2,6 +2,7 @@
 #include "pipe.h"
 #include "uart.h"
 #include "debugger.h"
+#include "log.h"
 
 #include "launch.h"
 
@@ -13,8 +14,8 @@ namespace
     int init(SceSize args, void *argp)
     {
         pipe::init();
-        uart::init();
-        uart::use();
+        //uart::init();
+        //uart::use();
 
         exception::register_handlers();
 
@@ -27,6 +28,7 @@ extern "C" void __cxa_pure_virtual() { while (1); }
 
 extern "C" int module_start()
 {
+    LOG("kvdb stuff\n");
     // TODO: handle returns for this
     auto thid = ksceKernelCreateThread("kvdb", init, 0x40, 0x8000, 0, 0, nullptr);
     ksceKernelStartThread(thid, 0, nullptr);

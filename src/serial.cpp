@@ -26,9 +26,9 @@ namespace serial
 
     int get()
     {
-        while (1)
+        while (true)
         {
-            auto ch = device()->get();
+            auto ch = device() == nullptr ? -1 : device()->get();
 
             if (ch >= 0)
             {

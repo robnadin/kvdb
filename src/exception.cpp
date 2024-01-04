@@ -107,8 +107,8 @@ extern "C"
             return EXCEPTION_NOT_HANDLED;
         }
 
-        SceKernelFaultingProcessInfo info;
-        ksceKernelGetFaultingProcess(&info); // TODO: check result
+        SceKernelThreadContextInfo info;
+        ksceKernelGetFaultingProcessInfo(&info); // TODO: check result
         g_abt_excp_count = reinterpret_cast<std::uint32_t *>(ksceExcpmgrGetData());
 
         auto code = ((ctx->ifsr & 0x400) >> 6) | (ctx->ifsr & 0xF);
@@ -118,21 +118,26 @@ extern "C"
             auto target = debugger->target();
 
             // check if its our process
-            if (target->pid != info.pid)
+            if (target->pid != info.process_id)
             {
                 return EXCEPTION_NOT_HANDLED;
             }
 
-            target->excpt_tid = info.unk;
+            target->excpt_tid = info.thread_id;
 
             int status = 0;
             ksceKernelGetProcessStatus(target->pid, &status); // TODO: check result
 
-            ksceKernelChangeThreadSuspendStatus(info.unk, 0x1002); // TODO: check result
+            ksceKernelChangeThreadSuspendStatus(info.thread_id, 0x1002); // TODO: check result
 
             // lets suspend the process for further processing by gdb
             debugger->halt(0x1C);
             //ksceKernelSuspendProcess(target->pid, 0x1C); // TODO: check result
+
+            if (debugger->m_instruction != 0) {
+                ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)debugger->m_pc_addr, &debugger->m_instruction, 4);
+                debugger->m_instruction = 0;
+            }
 
             // signal GDB that we have halted
             debugger->signal(Debugger::Signal::BKPT);
@@ -155,24 +160,24 @@ extern "C"
             return EXCEPTION_NOT_HANDLED;
         }
 
-        SceKernelFaultingProcessInfo info;
-        ksceKernelGetFaultingProcess(&info); // TODO: check result
+        SceKernelThreadContextInfo info;
+        ksceKernelGetFaultingProcessInfo(&info); // TODO: check result
         g_abt_excp_count = reinterpret_cast<std::uint32_t *>(ksceExcpmgrGetData());
 
         auto target = debugger->target();
 
         // check if its our process
-        if (target->pid != info.pid)
+        if (target->pid != info.process_id)
         {
             return EXCEPTION_NOT_HANDLED;
         }
 
-        target->excpt_tid = info.unk;
+        target->excpt_tid = info.thread_id;
 
         int status = 0;
         ksceKernelGetProcessStatus(target->pid, &status); // TODO: check result
 
-        ksceKernelChangeThreadSuspendStatus(info.unk, 0x1002); // TODO: check result
+        ksceKernelChangeThreadSuspendStatus(info.thread_id, 0x1002); // TODO: check result
 
         // lets suspend the process for further processing by gdb
         debugger->halt(0x1C);
@@ -196,8 +201,8 @@ extern "C"
             return EXCEPTION_NOT_HANDLED;
         }
 
-        SceKernelFaultingProcessInfo info;
-        ksceKernelGetFaultingProcess(&info); // TODO: check result
+        SceKernelThreadContextInfo info;
+        ksceKernelGetFaultingProcessInfo(&info); // TODO: check result
         g_abt_excp_count = reinterpret_cast<std::uint32_t *>(ksceExcpmgrGetData());
 
         //auto code = ((ctx->ifsr & 0x400) >> 6) | (ctx->ifsr & 0xF);
@@ -207,21 +212,26 @@ extern "C"
             auto target = debugger->target();
 
             // check if its our process
-            if (target->pid != info.pid)
+            if (target->pid != info.process_id)
             {
                 return EXCEPTION_NOT_HANDLED;
             }
 
-            target->excpt_tid = info.unk;
+            target->excpt_tid = info.thread_id;
 
             int status = 0;
             ksceKernelGetProcessStatus(target->pid, &status); // TODO: check result
 
-            ksceKernelChangeThreadSuspendStatus(info.unk, 0x1002); // TODO: check result
+            ksceKernelChangeThreadSuspendStatus(info.thread_id, 0x1002); // TODO: check result
 
             // lets suspend the process for further processing by gdb
             debugger->halt(0x1C);
             //ksceKernelSuspendProcess(target->pid, 0x1C); // TODO: check result
+
+            if (debugger->m_instruction != 0) {
+                ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)debugger->m_pc_addr, &debugger->m_instruction, 4);
+                debugger->m_instruction = 0;
+            }
 
             // signal GDB that we have halted
             debugger->signal(Debugger::Signal::BKPT);

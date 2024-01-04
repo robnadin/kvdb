@@ -19,6 +19,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-q -Wall -flto -O3 -std=c++11 -stati
 
 add_executable(kvdb
   src/main.cpp
+  src/arm.cpp
   src/exception.cpp
   src/exception_asm.S
   src/debugger.cpp
@@ -51,26 +52,34 @@ add_executable(kvdb
 )
 
 target_link_libraries(kvdb
-  c
-  gcc
-  SceSysmemForDriver_stub
-  SceSysmemForKernel_stub
-  SceAppMgrForDriver_stub
-  SceExcpmgrForKernel_stub
-  SceThreadmgrForKernel_stub
-  SceUartForKernel_stub
+  k
+  SceDebugForDriver_stub 
+  #SceLibc_stub_weak
   SceThreadmgrForDriver_stub
+  SceLibKernel_stub
+  SceSysmem_stub
+  SceRtc_stub
+  SceNet_stub
+  SceIofilemgr_stub
+  SceProcessmgr_stub
+  SceSysmemForDriver_stub
+  SceSysmemForKernel_stub_weak
+  SceAppMgrForDriver_stub
+  SceExcpmgrForKernel_stub_weak
+  SceThreadmgrForKernel_stub_weak
+  SceUartForKernel_stub_weak
   SceProcessmgrForDriver_stub
-  SceProcessmgrForKernel_stub
-  SceModulemgrForKernel_stub
+  SceProcessmgrForKernel_stub_weak
+  SceModulemgrForKernel_stub_weak
   ScePervasiveForDriver_stub
   SceCpuForDriver_stub
-  SceCpuForKernel_stub
+  SceCpuForKernel_stub_weak
   SceIofilemgrForDriver_stub
   SceSysrootForDriver_stub
   SceDebugForDriver_stub
-  SceDebugForKernel_stub
-)
+  SceDebugForKernel_stub_weak
+  gcc
+  )
 
 target_include_directories(kvdb PRIVATE src)
 

@@ -2,7 +2,7 @@
 #include "serial.h"
 #include "serial_impl.h"
 
-#include <psp2kern/uart.h>
+#include <psp2kern/kernel/uart.h>
 #include <psp2kern/lowio/pervasive.h>
 
 #include <stdarg.h>

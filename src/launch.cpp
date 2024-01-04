@@ -22,6 +22,7 @@ namespace launch
 {
     int for_debug(const char *path)
     {
+        LOG("trying to launch: %s\n", path);
         const char launch_args[] = "\0\0-titleid\0MLCL05505\0";
 
         AppMgrLaunchParam param;

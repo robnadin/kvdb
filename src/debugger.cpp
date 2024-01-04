@@ -25,6 +25,8 @@
 #include <psp2kern/kernel/modulemgr.h>
 #include <psp2kern/kernel/threadmgr.h>
 #include <psp2kern/kernel/processmgr.h>
+#include <psp2kern/kernel/debug.h>
+#include <psp2kern/kernel/sysroot.h>
 
 namespace
 {
@@ -42,9 +44,16 @@ namespace
         return &command;
     }
 
-    int dummy_handler()
+    void dummy_handler(SceUID pid, SceUID modid, uint64_t time)
     {
-        return 0;
+    }
+
+    void dummy_handler2(SceUID pid, SceUID modid, int flags, uint64_t time)
+    {
+    }
+
+    void dummy_handler3(SceUID pid)
+    {
     }
 }
 
@@ -72,7 +81,7 @@ Debugger::Debugger()
         static_command<ReadRegistersCommand>(this),
         static_command<ResumeCommand>(this),
         static_command<SetThreadCommand>(this),
-        //static_command<StepCommand>(this),
+        static_command<StepCommand>(this),
         static_command<ThreadInfoCommand>(this),
         static_command<WriteMemoryCommand>(this)
     };
@@ -85,20 +94,22 @@ Debugger::Debugger()
     m_proc_handler = 
     {
         sizeof(SceSysrootProcessHandler),
+        ::dummy_handler2,
         ::dummy_handler,
-        ::dummy_handler,
-        ::dummy_handler,
+        ::dummy_handler3,
         ::dummy_handler,
         ::dummy_handler,
         ::dummy_handler,
         on_process_created_handler,
         ::dummy_handler,
-        ::dummy_handler
+        ::dummy_handler2
     };
 
     memset(m_stdout_cache, 0, sizeof(m_stdout_cache));
 
     ksceKernelSysrootSetProcessHandler(&m_proc_handler);
+
+    m_previous_putchar_handler = (putchar_handler_t)ksceDebugGetPutcharHandler();
     ksceDebugRegisterPutcharHandler(&Debugger::putchar_handler, this);
 }
 
@@ -119,9 +130,10 @@ int Debugger::pollSignal(Signal signal, unsigned int *pattern)
 
 int Debugger::start()
 {
+    LOG("debugger start\n");
     Packet packet;
 
-    while (1)
+    while (true)
     {
         packet.reset();
         while (rsp::read(packet.recv_buf, packet.size()) < 0);
@@ -222,7 +234,7 @@ int Debugger::on_process_created()
     return 0;
 }
 
-int Debugger::on_process_created_handler()
+int Debugger::on_process_created_handler(int a1, int a2, int a3)
 {
     return instance()->on_process_created();
 }
@@ -231,8 +243,8 @@ int Debugger::on_putchar(char ch)
 {
     if (m_state != State::Running || ksceKernelGetProcessId() != m_target.pid)
     {
-        char str[2] = { ch, 0 };
-        uart::printf(str);
+        //char str[2] = { ch, 0 };
+        //uart::printf(str);
         return 0;
     }
 
@@ -254,7 +266,12 @@ int Debugger::on_putchar(char ch)
 
 int Debugger::putchar_handler(void *arg, char ch)
 {
-    Debugger *debugger = reinterpret_cast<Debugger *>(arg);
+    Debugger *debugger = static_cast<Debugger *>(arg);
+
+    if (debugger->m_previous_putchar_handler != nullptr) {
+        debugger->m_previous_putchar_handler(nullptr, ch);
+    }
+
     return debugger->on_putchar(ch);
 }
 
