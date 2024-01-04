@@ -1,8 +1,11 @@
 #include "step.h"
 #include "packet.h"
 #include "debugger.h"
+#include "log.h"
+#include "arm.h"
 
 #include <psp2kern/kernel/threadmgr.h>
+#include <psp2kern/kernel/processmgr.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -19,12 +22,13 @@ bool StepCommand::is(const Packet *packet) const
 
 int StepCommand::execute(Packet *packet)
 {
-    auto addr = 0u;
+    LOG("step\n");
+    //auto addr = 0u;
 
-    if (strlen(packet->recv_buf) > 1)
-    {
-        addr = strtoul(packet->recv_buf+1, nullptr, 16);
-    }
+    //if (strlen(packet->recv_buf) > 1)
+    //{
+    //    addr = strtoul(packet->recv_buf+1, nullptr, 16);
+    //}
 
     auto target = m_debugger->target();
     ThreadCpuRegisters register_sets;
@@ -33,35 +37,76 @@ int StepCommand::execute(Packet *packet)
     auto registers = (register_sets.user.cpsr & 0x1F) == 0x10 ? (&register_sets.user) : (&register_sets.kernel);
 
     auto pc_addr = registers->pc;
-    auto is_thumb = (registers->cpsr & (1 << 5)) != 0;
 
-    if (is_thumb)
+    if (arm::isThumb(register_sets))
     {
         // TODO: error check better
         auto instruction = 0u;
-        auto res = ksceKernelMemcpyUserToKernelForPid(target->pid, &instruction, pc_addr, 2);
+        auto res = ksceKernelMemcpyUserToKernelForPid(target->pid, &instruction, (void*)pc_addr, 2);
 
-        if (res < 0)
-        {
-            packet->send("E0B");
-            return res;
+        LOG("thumb: 0x%04x\n", instruction);
+
+        uint32_t instruction_size = arm::getThumbInstructionSize(instruction);
+
+        LOG("thumb instruction size: %" PRIu32 "\n", instruction_size);
+
+        if (m_debugger->m_pc_addr != pc_addr + instruction_size) {
+            m_debugger->m_pc_addr = pc_addr + instruction_size;
+
+            res = ksceKernelMemcpyUserToKernelForPid(target->pid, &instruction, (void*)m_debugger->m_pc_addr, 4);
+            LOG("thumb: 0x%04x\n", instruction);
+
+            m_debugger->m_instruction = instruction;
+
+            uint32_t undef = 0xffffffff;
+            res = ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)m_debugger->m_pc_addr, &undef, 4);
+            LOG("thumb: write step ret: %d\n", res);
+
+            if (res < 0)
+            {
+                LOG("step failed: %d\n", res);
+                packet->send("E0B");
+                return res;
+            }
         }
     }
     else
     {
         // TODO: error check better
         auto instruction = 0u;
-        auto res = ksceKernelMemcpyUserToKernelForPid(target->pid, &instruction, pc_addr, 4);
+        auto res = ksceKernelMemcpyUserToKernelForPid(target->pid, &instruction, (void*)pc_addr, 4);
 
-        if (res < 0)
-        {
-            packet->send("E0B");
-            return res;
+        LOG("arm: 0x%04x\n", instruction);
+
+        if (m_debugger->m_pc_addr != pc_addr + 4) {
+            m_debugger->m_pc_addr = pc_addr + 4;
+
+            res = ksceKernelMemcpyUserToKernelForPid(target->pid, &instruction, (void*)m_debugger->m_pc_addr, 4);
+            LOG("arm: 0x%04x\n", instruction);
+
+            m_debugger->m_instruction = instruction;
+
+            uint32_t undef = 0xffffffff;
+            res = ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)m_debugger->m_pc_addr, &undef, 4);
+            LOG("arm: write step ret: %d\n", res);
+
+            if (res < 0)
+            {
+                LOG("step failed: %d\n", res);
+                packet->send("E0B");
+                return res;
+            }
         }
-
-
     }
-    
+
+    LOG("step successful\n");
+
+    ksceKernelChangeThreadSuspendStatus(target->excpt_tid, 2);
+    ksceKernelResumeProcess(target->pid);
+
+    ksceKernelSuspendProcess(target->pid, 0x11);
+
+    packet->send("S05");
 
     return 0;
 }

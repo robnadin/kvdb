@@ -1,6 +1,7 @@
 #pragma once
 
 #include "command.h"
+#include <cinttypes>
 
 class Debugger;
 
@@ -16,4 +17,5 @@ private:
     
 private:
     Debugger * const m_debugger = nullptr;
+    //uint32_t instruction = 0;
 };
