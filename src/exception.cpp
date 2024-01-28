@@ -136,7 +136,7 @@ extern "C"
 
             if (debugger->m_instruction != 0) {
                 ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)debugger->m_pc_addr, &debugger->m_instruction, 4);
-                debugger->m_instruction = 0;
+                //debugger->m_instruction = 0;
             }
 
             // signal GDB that we have halted
@@ -230,7 +230,7 @@ extern "C"
 
             if (debugger->m_instruction != 0) {
                 ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)debugger->m_pc_addr, &debugger->m_instruction, 4);
-                debugger->m_instruction = 0;
+                //debugger->m_instruction = 0;
             }
 
             // signal GDB that we have halted

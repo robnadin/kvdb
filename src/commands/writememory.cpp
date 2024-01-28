@@ -8,6 +8,8 @@
 #include <psp2kern/kernel/sysmem.h>
 
 #include <stdlib.h>
+#include <inttypes.h>
+#include <string>
 
 WriteMemoryCommand::WriteMemoryCommand(Debugger *debugger)
     : m_debugger(debugger)
@@ -29,6 +31,12 @@ int WriteMemoryCommand::execute(Packet *packet)
     auto hex = strchr(packet->recv_buf, ':') + 1;
 
     hex::from_string(packet->recv_buf, hex);
+
+    LOG("write memory: address: 0x%08x\n", addr);
+
+    LOG("write memory: payload: %s\n", hex);
+
+    LOG("write memory: length: %" PRIu32 "\n", length);
 
     // TODO: check if dest write location is valid
     // TODO: check result

@@ -42,6 +42,7 @@ public:
     Target *target();
     
     uint32_t m_instruction = 0;
+    uint32_t m_pc_prev_addr = 0;
     uint32_t m_pc_addr = 0;
 
 private:

@@ -1,6 +1,8 @@
 #include "arm.h"
 #include "log.h"
 
+#include <cinttypes>
+
 bool arm::isThumb(SceThreadCpuRegisters const& registers) {
     auto regs = (registers.user.cpsr & 0x1F) == 0x10 ? (&registers.user) : (&registers.kernel);
     return (regs->cpsr & (1 << 5)) != 0;
@@ -8,8 +10,8 @@ bool arm::isThumb(SceThreadCpuRegisters const& registers) {
 
 constexpr uint32_t THUMB_32_BIT_MASK = 0x1f << 11;
 
-constexpr uint32_t THUMB_INST_BL_32_BIT_MASK      = 0b11110000000000001101000000000000;
-constexpr uint32_t THUMB_INST_BLX_32_BIT_MASK     = 0b11110000000000001100000000000000;
+constexpr uint32_t THUMB_INST_BL_32_BIT_MASK      = 0b11010000000000001111000000000000;
+constexpr uint32_t THUMB_INST_BLX_32_BIT_MASK     = 0b11000000000000001111000000000000;
 
 constexpr uint32_t ARM_INST_BL_BIT_MASK           = 0b00001011000000000000000000000000;
 constexpr uint32_t ARM_INST_BLX_BIT_MASK          = 0b11111010000000000000000000000000;
@@ -24,8 +26,8 @@ constexpr uint32_t ARM_INST_BX_REG_BIT_MASK       = 0b00000001001011111111111100
 
 constexpr uint16_t THUMB_INST_B_16_BIT_MASK       = 0b1101000000000000;
 constexpr uint16_t THUMB_INST2_B_16_BIT_MASK      = 0b1110000000000000;
-constexpr uint32_t THUMB_INST_B_32_BIT_MASK       = 0b11110000000000001000000000000000;
-constexpr uint32_t THUMB_INST2_B_32_BIT_MASK      = 0b11110000000000001001000000000000;
+constexpr uint32_t THUMB_INST_B_32_BIT_MASK       = 0b10000000000000001111000000000000;
+constexpr uint32_t THUMB_INST2_B_32_BIT_MASK      = 0b10010000000000001111000000000000;
 
 constexpr uint32_t ARM_INST_B_BIT_MASK            = 0b00001010000000000000000000000000;
 
@@ -56,25 +58,98 @@ uintptr_t arm::getNextInstructionAddr(SceThreadCpuRegisters const& registers, In
 }
 
 int32_t arm::getNextInstructionOffset(SceThreadCpuRegisters const& registers, Instruction instruction) {
+    int32_t instruction_offset = 0;
     if (isThumb(registers)) {
         ThumbInstruction thumb_instruction = instruction;
         uint32_t thumb_instruction_size = getThumbInstructionSize(thumb_instruction);
+        instruction_offset = thumb_instruction_size;
         if (thumb_instruction_size == 4) {
-            if ((thumb_instruction & THUMB_INST_BL_32_BIT_MASK) == THUMB_INST_BL_32_BIT_MASK) {
-                uint16_t instr_l = thumb_instruction & 0xffff;
-                uint16_t instr_h = (thumb_instruction >> 16) & 0xffff;
+            //LOG("BL hex: 0x%08x\n", THUMB_INST_BL_32_BIT_MASK);
+            /*if ((thumb_instruction & THUMB_INST_BL_32_BIT_MASK) == THUMB_INST_BL_32_BIT_MASK) {
+                LOG("thumb BL instruction\n");
+                uint16_t instr_h = thumb_instruction & 0xffff;
+                uint16_t instr_l = (thumb_instruction >> 16) & 0xffff;
+                LOG("thumb instr high: %04x instr low: %04x\n", instr_h, instr_l);
                 uint8_t sign = (instr_h >> 10) & 0x1;
-                uint32_t i1 = ~(((instr_l >> 13) & 0x1) ^ sign);
-                uint32_t i2 = ~(((instr_l >> 11) & 0x1) ^ sign);
-                uint32_t offset = (i1 << 23) | (i2 << 22) | ((instr_h & 0x2f) << 12) | (instr_l & 0x3f) << 1 | 0;
+                uint32_t i1 = ~(((instr_l >> 13) & 0x1) ^ sign) & 0x1;
+                uint32_t i2 = ~(((instr_l >> 11) & 0x1) ^ sign) & 0x1;
+                uint32_t offset = ((i1 & 0x1) << 23) | ((i2 & 0x1) << 22) | ((instr_h & 0x3ff) << 12) | (instr_l & 0x7ff) << 1 | 0;
+
+                LOG("thumb sign: %01x i1: %04x i2: %04x offset: %" PRIu32 "\n", sign, i1, i2, offset);
+
                 int32_t offset_signed = sign ? -offset : offset;
-                return offset_signed;
+                LOG("thumb BL offset:%" PRIi32 "\n", offset_signed);
+                instruction_offset = 4 + offset_signed;
+            }
+            else if ((thumb_instruction & THUMB_INST_BLX_32_BIT_MASK) == THUMB_INST_BLX_32_BIT_MASK) {
+                LOG("thumb BLX instruction\n");
+                uint16_t instr_h = thumb_instruction & 0xffff;
+                uint16_t instr_l = (thumb_instruction >> 16) & 0xffff;
+                LOG("thumb instr high: %04x instr low: %04x\n", instr_h, instr_l);
+                uint8_t sign = (instr_h >> 10) & 0x1;
+                uint32_t i1 = ~(((instr_l >> 13) & 0x1) ^ sign) & 0x1;
+                uint32_t i2 = ~(((instr_l >> 11) & 0x1) ^ sign) & 0x1;
+                uint32_t offset = ((i1 & 0x1) << 23) | ((i2 & 0x1) << 22) | ((instr_h & 0x3ff) << 12) | (instr_l & 0x3ff) << 2 | 0;
+
+                LOG("thumb sign: %01x i1: %04x i2: %04x offset: %" PRIu32 "\n", sign, i1, i2, offset);
+
+                int32_t offset_signed = sign ? -offset : offset;
+                LOG("thumb BL offset:%" PRIi32 "\n", offset_signed);
+                instruction_offset = 4 + offset_signed;
+            }
+            else*/ 
+            if ((thumb_instruction & THUMB_INST_B_32_BIT_MASK) == THUMB_INST_B_32_BIT_MASK) {
+                uint16_t instr_h = thumb_instruction & 0xffff;
+                uint16_t instr_l = (thumb_instruction >> 16) & 0xffff;
+                LOG("thumb instr high: %04x instr low: %04x\n", instr_h, instr_l);
+                uint8_t sign = (instr_h >> 10) & 0x1;
+                uint8_t cond = (instr_h >> 6) & 0xf;
+                uint8_t imm6 = instr_h & 0x1f;
+                uint16_t imm11 = instr_l & 0x7ff;
+                uint32_t j1 = ~(((instr_l >> 13) & 0x1) ^ sign) & 0x1;
+                uint32_t j2 = ~(((instr_l >> 11) & 0x1) ^ sign) & 0x1;
+                uint32_t offset = ((j2 & 0x1) << 19) | ((j1 & 0x1) << 18) | ((imm6 & 0x1f) << 12) | (imm11 & 0x7ff) << 1 | 0;
+
+                int32_t offset_signed = sign ? -offset : offset;
+                LOG("thumb BL offset:%" PRIi32 "\n", offset_signed);
+                instruction_offset = 4 + (handleCondition(registers, cond) ? 0 : offset_signed);
+            }
+            else if ((thumb_instruction & THUMB_INST2_B_32_BIT_MASK) == THUMB_INST2_B_32_BIT_MASK) {
+                uint16_t instr_h = thumb_instruction & 0xffff;
+                uint16_t instr_l = (thumb_instruction >> 16) & 0xffff;
+                LOG("thumb instr high: %04x instr low: %04x\n", instr_h, instr_l);
+                uint8_t sign = (instr_h >> 10) & 0x1;
+                uint8_t imm10 = instr_h & 0x3ff;
+                uint16_t imm11 = instr_l & 0x7ff;
+                uint32_t i1 = ~(((instr_l >> 13) & 0x1) ^ sign) & 0x1;
+                uint32_t i2 = ~(((instr_l >> 11) & 0x1) ^ sign) & 0x1;
+                uint32_t offset = ((i1 & 0x1) << 23) | ((i2 & 0x1) << 22) | ((imm10 & 0x3ff) << 12) | (imm11 & 0x7ff) << 1 | 0;
+
+                int32_t offset_signed = sign ? -offset : offset;
+                LOG("thumb BL offset:%" PRIi32 "\n", offset_signed);
+                instruction_offset = 4 + offset_signed;
             }
         } else if (thumb_instruction_size == 2) {
-
+            if ((thumb_instruction & THUMB_INST_B_16_BIT_MASK) == THUMB_INST_B_16_BIT_MASK) {
+                LOG("thumb B instruction\n");
+                uint8_t imm8 = thumb_instruction & 0xff;
+                uint8_t cond = (thumb_instruction >> 8) & 0xf;
+                uint32_t offset = ((imm8 & 0xff) << 1) | 0;
+                int32_t offset_signed = (imm8 & (1 << 7)) ? -offset : offset;
+                LOG("thumb B offset:%" PRIi32 "\n", offset_signed);
+                instruction_offset = 4 + (handleCondition(registers, cond) ? 0 : offset_signed);
+            }
+            else if ((thumb_instruction & THUMB_INST2_B_16_BIT_MASK) == THUMB_INST2_B_16_BIT_MASK) {
+                LOG("thumb B 2 instruction\n");
+                uint16_t imm11 = thumb_instruction & 0x7ff;
+                uint32_t offset = ((imm11 & 0x7ff) << 1) | 0;
+                int32_t offset_signed = (imm11 & (1 << 10)) ? -offset : offset;
+                LOG("thumb B 2 offset:%" PRIi32 "\n", offset_signed);
+                instruction_offset = 4 + offset_signed;
+            }
         }
         else {
-            LOG("error: wrong instruction size");
+            LOG("error: wrong instruction size\n");
             return 0;
         }
     }
@@ -82,5 +157,46 @@ int32_t arm::getNextInstructionOffset(SceThreadCpuRegisters const& registers, In
 
     }
 
-    return 0;
+    return instruction_offset;
+}
+
+bool arm::handleCondition(SceThreadCpuRegisters const& registers, uint8_t condition) {
+    auto regs = (registers.user.cpsr & 0x1F) == 0x10 ? (&registers.user) : (&registers.kernel);
+    uint32_t N = (regs->cpsr >> 31) & 0x1;
+    uint32_t Z = (regs->cpsr >> 30) & 0x1;
+    uint32_t C = (regs->cpsr >> 29) & 0x1;
+    uint32_t V = (regs->cpsr >> 28) & 0x1;
+    switch(condition & 0xf) {
+    case 0x0:
+        return Z == 1;
+    case 0x1:
+        return Z == 0;
+    case 0x2:
+        return C == 1;
+    case 0x3:
+        return C == 0;
+    case 0x4:
+        return N == 1;
+    case 0x5:
+        return N == 0;
+    case 0x6:
+        return V == 1;
+    case 0x7:
+        return V == 0;
+    case 0x8:
+        return C == 1 && Z == 0;
+    case 0x9:
+        return C == 0 || Z == 1;
+    case 0xA:
+        return N == V;
+    case 0xB:
+        return N != V;
+    case 0xC:
+        return Z == 0 && N == V;
+    case 0xD:
+        return Z == 1 || N != V;
+    case 0xE:
+        return true;
+    }
+    return false;
 }

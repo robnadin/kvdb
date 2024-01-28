@@ -40,27 +40,42 @@ int StepCommand::execute(Packet *packet)
 
     if (arm::isThumb(register_sets))
     {
+        if (pc_addr == m_debugger->m_pc_prev_addr) {
+            LOG("thumb: restore instruction as step didn't work\n");
+            LOG("thumb: addr: 0x%08x\n", m_debugger->m_pc_addr);
+            LOG("thumb: instruction: 0x%08x\n", m_debugger->m_instruction);
+            ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)m_debugger->m_pc_addr, &m_debugger->m_instruction, 4);
+        }
+
         // TODO: error check better
         auto instruction = 0u;
         auto res = ksceKernelMemcpyUserToKernelForPid(target->pid, &instruction, (void*)pc_addr, 2);
 
-        LOG("thumb: 0x%04x\n", instruction);
+        m_debugger->m_pc_prev_addr = pc_addr;
+
+        //LOG("thumb: 0x%08x\n", instruction);
 
         uint32_t instruction_size = arm::getThumbInstructionSize(instruction);
 
+        uintptr_t current_instruction = pc_addr;
+        LOG("thumb: current instruction: 0x%08x\n", current_instruction);
         LOG("thumb instruction size: %" PRIu32 "\n", instruction_size);
+        res = ksceKernelMemcpyUserToKernelForPid(target->pid, &instruction, (void*)pc_addr, instruction_size);
+        uintptr_t next_instruction = arm::getNextInstructionAddr(register_sets, instruction);
 
-        if (m_debugger->m_pc_addr != pc_addr + instruction_size) {
-            m_debugger->m_pc_addr = pc_addr + instruction_size;
+        if (pc_addr != next_instruction) {
+            m_debugger->m_pc_addr = next_instruction;
+
+            LOG("thumb: next instruction: 0x%08x\n", next_instruction);
 
             res = ksceKernelMemcpyUserToKernelForPid(target->pid, &instruction, (void*)m_debugger->m_pc_addr, 4);
-            LOG("thumb: 0x%04x\n", instruction);
+            LOG("thumb: 0x%08x\n", instruction);
 
             m_debugger->m_instruction = instruction;
 
             uint32_t undef = 0xffffffff;
             res = ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)m_debugger->m_pc_addr, &undef, 4);
-            LOG("thumb: write step ret: %d\n", res);
+            //LOG("thumb: write step ret: %d\n", res);
 
             if (res < 0)
             {

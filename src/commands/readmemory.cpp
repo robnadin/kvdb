@@ -27,7 +27,7 @@ int ReadMemoryCommand::execute(Packet *packet)
     auto addr = strtoul(packet->recv_buf+1, nullptr, 16);
     auto length = strtoul(strchr(packet->recv_buf, ',')+1, nullptr, 16);
 
-    LOG("0x%08x\n", addr);
+    //LOG("0x%08x\n", addr);
 
     // half size because our dest write is hex characters
     // -1 because we need space for null terminator

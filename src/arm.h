@@ -14,4 +14,5 @@ namespace arm
     uint32_t getThumbInstructionSize(ThumbInstruction instruction);
     uintptr_t getNextInstructionAddr(SceThreadCpuRegisters const& registers, Instruction instruction);
     int32_t getNextInstructionOffset(SceThreadCpuRegisters const& registers, Instruction instruction);
+    bool handleCondition(SceThreadCpuRegisters const& registers, uint8_t condition);
 }
