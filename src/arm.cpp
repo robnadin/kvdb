@@ -137,7 +137,7 @@ int32_t arm::getNextInstructionOffset(SceThreadCpuRegisters const& registers, In
                 uint32_t offset = ((imm8 & 0xff) << 1) | 0;
                 int32_t offset_signed = (imm8 & (1 << 7)) ? -offset : offset;
                 LOG("thumb B offset:%" PRIi32 "\n", offset_signed);
-                instruction_offset = 4 + (handleCondition(registers, cond) ? 0 : offset_signed);
+                instruction_offset = (handleCondition(registers, cond) ? offset_signed + 4 : instruction_offset);
             }
             else if ((thumb_instruction & THUMB_INST2_B_16_BIT_MASK) == THUMB_INST2_B_16_BIT_MASK) {
                 LOG("thumb B 2 instruction\n");
@@ -166,37 +166,68 @@ bool arm::handleCondition(SceThreadCpuRegisters const& registers, uint8_t condit
     uint32_t Z = (regs->cpsr >> 30) & 0x1;
     uint32_t C = (regs->cpsr >> 29) & 0x1;
     uint32_t V = (regs->cpsr >> 28) & 0x1;
+    bool res = false;
     switch(condition & 0xf) {
     case 0x0:
-        return Z == 1;
+        res = Z == 1;
+        LOG("Equal: %s\n", res ? "true" : "false");
+        break;
     case 0x1:
-        return Z == 0;
+        res = Z == 0;
+        LOG("Not Equal: %s\n", res ? "true" : "false");
+        break;
     case 0x2:
-        return C == 1;
+        res = C == 1;
+        LOG("Carry Set: %s\n", res ? "true" : "false");
+        break;
     case 0x3:
-        return C == 0;
+        res = C == 0;
+        LOG("Carry Clear: %s\n", res ? "true" : "false");
+        break;
     case 0x4:
-        return N == 1;
+        res = N == 1;
+        LOG("Minus, Negative: %s\n", res ? "true" : "false");
+        break;
     case 0x5:
-        return N == 0;
+        res = N == 0;
+        LOG("Plus, Positive or Zero: %s\n", res ? "true" : "false");
+        break;
     case 0x6:
-        return V == 1;
+        res = V == 1;
+        LOG("Overflow: %s\n", res ? "true" : "false");
+        break;
     case 0x7:
-        return V == 0;
+        res = V == 0;
+        LOG("No Overflow: %S\n", res ? "true" : "false");
+        break;
     case 0x8:
-        return C == 1 && Z == 0;
+        res = C == 1 && Z == 0;
+        LOG("Unsigned Higher: %s\n", res ? "true" : "false");
+        break;
     case 0x9:
-        return C == 0 || Z == 1;
+        res = C == 0 || Z == 1;
+        LOG("Unsigned Lower or Same: %s\n", res ? "true" : "false");
+        break;
     case 0xA:
-        return N == V;
+        res = N == V;
+        LOG("Signed Greater Than or Equal: %s\n", res ? "true" : "false");
+        break;
     case 0xB:
-        return N != V;
+        res = N != V;
+        LOG("Signed Less Than: %s\n", res ? "true" : "false");
+        break;
     case 0xC:
-        return Z == 0 && N == V;
+        res = Z == 0 && N == V;
+        LOG("Signed Greater Than: %s\n", res ? "true" : "false");
+        break;
     case 0xD:
-        return Z == 1 || N != V;
+        res = Z == 1 || N != V;
+        LOG("Signed Less Than or Equal: %s\n", res ? "true" : "false");
+        break;
     case 0xE:
-        return true;
+        res = true;
+        LOG("error: wrong instruction size\n");
+        break;
     }
-    return false;
+    return res;
 }

@@ -51,6 +51,14 @@ int StepCommand::execute(Packet *packet)
         auto instruction = 0u;
         auto res = ksceKernelMemcpyUserToKernelForPid(target->pid, &instruction, (void*)pc_addr, 2);
 
+        if ((instruction & 0xffff) == 0xffff) {
+            LOG("thumb: restore instruction as gdb set it to 0xffff\n");
+            LOG("thumb: addr: 0x%08x\n", m_debugger->m_pc_addr);
+            LOG("thumb: instruction: 0x%08x\n", m_debugger->m_instruction);
+            ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)m_debugger->m_pc_addr, &m_debugger->m_instruction, 4);
+            ksceKernelMemcpyUserToKernelForPid(target->pid, &instruction, (void*)pc_addr, 2);
+        }
+
         m_debugger->m_pc_prev_addr = pc_addr;
 
         //LOG("thumb: 0x%08x\n", instruction);
