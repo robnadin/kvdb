@@ -69,7 +69,7 @@ int StepCommand::execute(Packet *packet)
         LOG("thumb: current instruction: 0x%08x\n", current_instruction);
         LOG("thumb instruction size: %" PRIu32 "\n", instruction_size);
         res = ksceKernelMemcpyUserToKernelForPid(target->pid, &instruction, (void*)pc_addr, instruction_size);
-        uintptr_t next_instruction = arm::getNextInstructionAddr(register_sets, instruction);
+        uintptr_t next_instruction = arm::getNextInstructionAddr(target->pid, register_sets, instruction);
 
         if (pc_addr != next_instruction) {
             m_debugger->m_pc_addr = next_instruction;

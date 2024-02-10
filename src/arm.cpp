@@ -3,6 +3,8 @@
 
 #include <cinttypes>
 
+#include <psp2kern/kernel/sysmem/data_transfers.h>
+
 bool arm::isThumb(SceThreadCpuRegisters const& registers) {
     auto regs = (registers.user.cpsr & 0x1F) == 0x10 ? (&registers.user) : (&registers.kernel);
     return (regs->cpsr & (1 << 5)) != 0;
@@ -35,6 +37,10 @@ constexpr uint32_t ARM_INST_BKPT                  = 0b11100001001000000000000001
 
 constexpr uint16_t THUMB_INST_BKPT_16_BIT         = 0b1011111000000000;
 
+constexpr uint16_t THUMB_INST_IT_16_BIT           = 0b1011111100000000;
+
+constexpr uint16_t THUMB_INST_POP_16_BIT          = 0b1011110000000000;
+
 uint32_t arm::getThumbInstructionSize(ThumbInstruction instruction) {
 
     uint32_t instruction_size = 2;
@@ -52,12 +58,12 @@ uint32_t arm::getThumbInstructionSize(ThumbInstruction instruction) {
     return instruction_size;
 }
 
-uintptr_t arm::getNextInstructionAddr(SceThreadCpuRegisters const& registers, Instruction instruction) {
+uintptr_t arm::getNextInstructionAddr(SceUID pid, SceThreadCpuRegisters const& registers, Instruction instruction) {
     auto regs = (registers.user.cpsr & 0x1F) == 0x10 ? (&registers.user) : (&registers.kernel);
-    return regs->pc + getNextInstructionOffset(registers, instruction);
+    return regs->pc + getNextInstructionOffset(pid, registers, instruction);
 }
 
-int32_t arm::getNextInstructionOffset(SceThreadCpuRegisters const& registers, Instruction instruction) {
+int32_t arm::getNextInstructionOffset(SceUID pid, SceThreadCpuRegisters const& registers, Instruction instruction) {
     int32_t instruction_offset = 0;
     if (isThumb(registers)) {
         ThumbInstruction thumb_instruction = instruction;
@@ -146,6 +152,46 @@ int32_t arm::getNextInstructionOffset(SceThreadCpuRegisters const& registers, In
                 int32_t offset_signed = (imm11 & (1 << 10)) ? -offset : offset;
                 LOG("thumb B 2 offset:%" PRIi32 "\n", offset_signed);
                 instruction_offset = 4 + offset_signed;
+            }
+            else if ((thumb_instruction & THUMB_INST_IT_16_BIT) == THUMB_INST_IT_16_BIT) {
+                LOG("thumb IT instruction\n");
+                uint8_t firstcond = (thumb_instruction >> 4) & 0xf;
+                uint8_t mask = thumb_instruction & 0xf;
+                if (mask != 0) {
+                    bool res = handleCondition(registers, firstcond);
+
+                    uint8_t mask_copy = mask;
+                    uint8_t instruction_count = 0;
+                    while ((mask_copy & 0xf) != 0) {
+                        mask_copy = mask_copy << 1;
+                        ++instruction_count;
+                    }
+
+                    LOG("thumb IT block instruction count: %" PRIu8 "\n", instruction_count);
+
+                    instruction_offset += res ? 0 : instruction_count * 2;
+                }
+            }
+            else if ((thumb_instruction & THUMB_INST_POP_16_BIT) == THUMB_INST_POP_16_BIT) {
+                LOG("thumb POP instruction\n");
+                uint8_t P = (thumb_instruction >> 7) & 0x1;
+                if (P != 0) {
+                    uint8_t register_list = thumb_instruction & 0xff;
+                    uint8_t bit_count = 0;
+                    while (register_list != 0) {
+                        if (register_list & 0x1) {
+                            ++bit_count;
+                        }
+                        register_list = register_list >> 1;
+                    }
+
+                    auto regs = (registers.user.cpsr & 0x1F) == 0x10 ? (&registers.user) : (&registers.kernel);
+                    auto sp = regs->sp;
+                    uintptr_t next_instruction_addr = 0;
+                    ksceKernelMemcpyUserToKernelForPid(pid, &next_instruction_addr, (void*)(sp + bit_count * 4), 4);
+                    LOG("thumb POP: restored pc: 0x%08x\n", next_instruction_addr - 1);
+                    instruction_offset = next_instruction_addr - 1 - regs->pc;
+                }
             }
         }
         else {
