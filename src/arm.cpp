@@ -212,62 +212,63 @@ bool arm::handleCondition(SceThreadCpuRegisters const& registers, uint8_t condit
     uint32_t Z = (regs->cpsr >> 30) & 0x1;
     uint32_t C = (regs->cpsr >> 29) & 0x1;
     uint32_t V = (regs->cpsr >> 28) & 0x1;
+    LOG("cpsr reg: 0x%08x\n", regs->cpsr);
     bool res = false;
     switch(condition & 0xf) {
     case 0x0:
-        res = Z == 1;
+        res = (Z == 1);
         LOG("Equal: %s\n", res ? "true" : "false");
         break;
     case 0x1:
-        res = Z == 0;
+        res = (Z == 0);
         LOG("Not Equal: %s\n", res ? "true" : "false");
         break;
     case 0x2:
-        res = C == 1;
+        res = (C == 1);
         LOG("Carry Set: %s\n", res ? "true" : "false");
         break;
     case 0x3:
-        res = C == 0;
+        res = (C == 0);
         LOG("Carry Clear: %s\n", res ? "true" : "false");
         break;
     case 0x4:
-        res = N == 1;
+        res = (N == 1);
         LOG("Minus, Negative: %s\n", res ? "true" : "false");
         break;
     case 0x5:
-        res = N == 0;
+        res = (N == 0);
         LOG("Plus, Positive or Zero: %s\n", res ? "true" : "false");
         break;
     case 0x6:
-        res = V == 1;
+        res = (V == 1);
         LOG("Overflow: %s\n", res ? "true" : "false");
         break;
     case 0x7:
-        res = V == 0;
+        res = (V == 0);
         LOG("No Overflow: %S\n", res ? "true" : "false");
         break;
     case 0x8:
-        res = C == 1 && Z == 0;
+        res = (C == 1 && Z == 0);
         LOG("Unsigned Higher: %s\n", res ? "true" : "false");
         break;
     case 0x9:
-        res = C == 0 || Z == 1;
+        res = (C == 0 || Z == 1);
         LOG("Unsigned Lower or Same: %s\n", res ? "true" : "false");
         break;
     case 0xA:
-        res = N == V;
+        res = (N == V);
         LOG("Signed Greater Than or Equal: %s\n", res ? "true" : "false");
         break;
     case 0xB:
-        res = N != V;
+        res = (N != V);
         LOG("Signed Less Than: %s\n", res ? "true" : "false");
         break;
     case 0xC:
-        res = Z == 0 && N == V;
+        res = (Z == 0 && N == V);
         LOG("Signed Greater Than: %s\n", res ? "true" : "false");
         break;
     case 0xD:
-        res = Z == 1 || N != V;
+        res = (Z == 1 || N != V);
         LOG("Signed Less Than or Equal: %s\n", res ? "true" : "false");
         break;
     case 0xE:

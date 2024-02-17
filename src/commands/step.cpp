@@ -38,6 +38,13 @@ int StepCommand::execute(Packet *packet)
 
     auto pc_addr = registers->pc;
 
+    if (m_debugger->m_pc_addr != 0 && m_debugger->m_pc_addr != pc_addr) {
+        LOG("ERRORRRRR: wrong address predicted\n");
+        LOG("predicted pc address: 0x%08x\n", m_debugger->m_pc_addr);
+        LOG("actual pc addr: 0x%08x\n", pc_addr);
+        ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)m_debugger->m_pc_addr, &m_debugger->m_instruction, 4);
+    }
+
     if (arm::isThumb(register_sets))
     {
         if (pc_addr == m_debugger->m_pc_prev_addr) {

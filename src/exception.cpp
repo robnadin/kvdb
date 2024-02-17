@@ -134,10 +134,10 @@ extern "C"
             debugger->halt(0x1C);
             //ksceKernelSuspendProcess(target->pid, 0x1C); // TODO: check result
 
-            if (debugger->m_instruction != 0) {
-                ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)debugger->m_pc_addr, &debugger->m_instruction, 4);
+            //if (debugger->m_instruction != 0) {
+            //    ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)debugger->m_pc_addr, &debugger->m_instruction, 4);
                 //debugger->m_instruction = 0;
-            }
+            //}
 
             // signal GDB that we have halted
             debugger->signal(Debugger::Signal::BKPT);

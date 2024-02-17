@@ -8,6 +8,7 @@
 #include <psp2kern/kernel/sysmem.h>
 
 #include <stdlib.h>
+#include <inttypes.h>
 
 ReadMemoryCommand::ReadMemoryCommand(Debugger *debugger)
     : m_debugger(debugger)
@@ -41,7 +42,15 @@ int ReadMemoryCommand::execute(Packet *packet)
         packet->send("E0B");
         return res;
     }
-
+    
     hex::to_string(packet->send_buf, packet->recv_buf, copy_length);
+    //auto hex = strchr(packet->send_buf, ':') + 1;
+
+    //LOG("read memory: address: 0x%08x\n", addr);
+
+    //LOG("read memory: payload: 0x%s\n", packet->send_buf);
+
+    //LOG("read memory: length: %" PRIu32 "\n", length);
+
     return 0;
 }
