@@ -26,8 +26,8 @@ int WriteMemoryCommand::execute(Packet *packet)
     auto target = m_debugger->target();
 
     // TODO: probably should check these
-    auto addr = strtoul(packet->recv_buf+1, nullptr, 16);
-    auto length = strtoul(strchr(packet->recv_buf, ',')+1, nullptr, 16);
+    auto addr = strtoul(packet->recv_buf + 1, nullptr, 16);
+    auto length = strtoul(strchr(packet->recv_buf, ',') + 1, nullptr, 16);
     auto hex = strchr(packet->recv_buf, ':') + 1;
 
     hex::from_string(packet->recv_buf, hex);

@@ -21,6 +21,7 @@
 #include "commands/step.h"
 #include "commands/threadinfo.h"
 #include "commands/writememory.h"
+#include "commands/swbreak.h"
 
 #include <psp2kern/kernel/modulemgr.h>
 #include <psp2kern/kernel/threadmgr.h>
@@ -83,7 +84,8 @@ Debugger::Debugger()
         static_command<SetThreadCommand>(this),
         static_command<StepCommand>(this),
         static_command<ThreadInfoCommand>(this),
-        static_command<WriteMemoryCommand>(this)
+        static_command<WriteMemoryCommand>(this),
+        static_command<SWBreakCommand>(this)
     };
 
     constexpr std::size_t g_cmd_n = sizeof(g_cmd_list)/sizeof(Command *);
@@ -138,6 +140,7 @@ int Debugger::start()
         packet.reset();
         while (rsp::read(packet.recv_buf, packet.size()) < 0);
 
+        LOG("packet: %s\n", packet.recv_buf);
         for (auto i = 0u; i < m_cmd_list_n; ++i)
         {
             if (m_cmd_list[i]->is(&packet))

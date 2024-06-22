@@ -7,10 +7,17 @@
 #include <psp2kern/kernel/sysroot.h>
 
 #include <cstdint>
+#include <unordered_set>
 
 class Command;
 
 typedef int(*putchar_handler_t)(void*,char c);
+
+struct SWBreak {
+    uint32_t addr = 0;
+    uint32_t inst = 0;
+    uint32_t size = 0;
+};
 
 class Debugger
 {
@@ -44,6 +51,9 @@ public:
     uint32_t m_instruction = 0;
     uint32_t m_pc_prev_addr = 0;
     uint32_t m_pc_addr = 0;
+
+    SWBreak m_sw_breakpoints[16] = {};
+    uint32_t m_sw_breakpoint_count = 0;
 
 private:
     Debugger();

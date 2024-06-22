@@ -2,6 +2,7 @@
 #include "exception_asm.h"
 #include "debugger.h"
 #include "target.h"
+#include "rsp.h"
 
 #include <psp2kern/kernel/cpu.h>
 #include <psp2kern/kernel/excpmgr.h>
@@ -10,6 +11,7 @@
 #include <psp2kern/kernel/processmgr.h>
 
 #include <cstdint>
+#include <cinttypes>
 
 #include "log.h"
 
@@ -139,6 +141,26 @@ extern "C"
                 //debugger->m_instruction = 0;
             //}
 
+            ThreadCpuRegisters register_sets;
+            ksceKernelGetThreadCpuRegisters(target->excpt_tid, &register_sets);
+
+            auto registers = (register_sets.user.cpsr & 0x1F) == 0x10 ? (&register_sets.user) : (&register_sets.kernel);
+
+            auto pc_addr = registers->pc;
+
+            for (uint32_t i = 0; i < debugger->m_sw_breakpoint_count; ++i) {
+                if (debugger->m_sw_breakpoints[i].addr == pc_addr) {
+                    LOG("restore swbreak: address: 0x%08x\n", debugger->m_sw_breakpoints[i].addr);
+
+                    LOG("restore swbreak: length: %" PRIu32 "\n", debugger->m_sw_breakpoints[i].size);
+                    ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)pc_addr, &debugger->m_sw_breakpoints[i].inst, debugger->m_sw_breakpoints[i].size);
+
+                    //rsp::write("T05swbreak", 10);
+
+                    break;
+                }
+            }
+
             // signal GDB that we have halted
             debugger->signal(Debugger::Signal::BKPT);
 
@@ -228,9 +250,26 @@ extern "C"
             debugger->halt(0x1C);
             //ksceKernelSuspendProcess(target->pid, 0x1C); // TODO: check result
 
-            if (debugger->m_instruction != 0) {
-                ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)debugger->m_pc_addr, &debugger->m_instruction, 4);
-                //debugger->m_instruction = 0;
+           // if (debugger->m_instruction != 0) {
+           //     ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)debugger->m_pc_addr, &debugger->m_instruction, 4);
+           //     //debugger->m_instruction = 0;
+           // }
+
+            ThreadCpuRegisters register_sets;
+            ksceKernelGetThreadCpuRegisters(target->excpt_tid, &register_sets);
+
+            auto registers = (register_sets.user.cpsr & 0x1F) == 0x10 ? (&register_sets.user) : (&register_sets.kernel);
+
+            auto pc_addr = registers->pc;
+
+            for (uint32_t i = 0; i < debugger->m_sw_breakpoint_count; ++i) {
+                if (debugger->m_sw_breakpoints[i].addr == pc_addr) {
+                    LOG("restore swbreak: address: 0x%08x\n", debugger->m_sw_breakpoints[i].addr);
+
+                    LOG("restore swbreak: length: %" PRIu32 "\n", debugger->m_sw_breakpoints[i].size);
+                    ksceKernelRxMemcpyKernelToUserForPid(target->pid, (void*)pc_addr, &debugger->m_sw_breakpoints[i].inst, debugger->m_sw_breakpoints[i].size);
+                    break;
+                }
             }
 
             // signal GDB that we have halted

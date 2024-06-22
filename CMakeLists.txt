@@ -49,6 +49,7 @@ add_executable(kvdb
   src/commands/qattached.cpp
   src/commands/threadinfo.cpp
   src/commands/step.cpp
+  src/commands/swbreak.cpp
 )
 
 target_link_libraries(kvdb

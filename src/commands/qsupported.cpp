@@ -1,6 +1,7 @@
 #include "qsupported.h"
 #include "packet.h"
 #include "utils.h"
+#include "log.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -136,6 +137,12 @@ int qSupportedCommand::execute(Packet *packet)
     qxfer_read.toString(work, sizeof(work));
     packet->send(";");
     packet->send(work);
+
+    Feature<const char*> swbreak("swbreak+");
+    swbreak.toString(work, sizeof(work));
+    packet->send(";");
+    packet->send(work);
+
     return 0;
 }
 
@@ -146,9 +153,9 @@ void qSupportedCommand::analyseFeatures(Packet *packet)
         return;
     }
 
-    auto next = strtok(packet->recv_buf+strlen("qSupported:"), ";");
+    auto next = strtok(packet->recv_buf + strlen("qSupported:"), ";");
 
-    while (next)
+    while (next != nullptr)
     {
         Feature<const char *> feature(next);
 
@@ -158,6 +165,8 @@ void qSupportedCommand::analyseFeatures(Packet *packet)
         }
 
         next = strtok(nullptr, ";");
+
+        LOG("gdb feature: %s\n", feature.name);
     }
 }
 
