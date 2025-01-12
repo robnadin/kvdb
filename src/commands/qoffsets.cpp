@@ -28,6 +28,6 @@ int qOffsetsCommand::execute(Packet *packet)
     // TODO: check for errors
     ksceKernelGetModuleInfo(target->pid, target->main_module_id, &info);
 
-    snprintf(packet->send_buf, packet->size(), "TextSeg=%08x;DataSeg=%08x", info.segments[0].vaddr, info.segments[1].vaddr);
+    snprintf(packet->send_buf, packet->size(), "TextSeg=%08x;DataSeg=%08x", reinterpret_cast<uint32_t>(info.segments[0].vaddr), reinterpret_cast<uint32_t>(info.segments[1].vaddr));
     return 0;
 }

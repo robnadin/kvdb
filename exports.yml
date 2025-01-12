@@ -5,7 +5,7 @@ kvdb:
     minor: 0
   main:
     start: module_start
-  modules:
+  libraries:
     vdb_kernel:
       functions:
         - vdb_serial_uart
