@@ -1,6 +1,12 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_CXX_COMPILER_FORCED True)
+
+if(APPLE)
+  # Override the default system to cross-compile for ARM processors
+  set(CMAKE_SYSTEM_NAME Linux)
+  set(CMAKE_SYSTEM_PROCESSOR ARM)
+endif()
 
 project(kvdb CXX ASM)
 
@@ -54,7 +60,7 @@ add_executable(kvdb
 
 target_link_libraries(kvdb
   k
-  SceDebugForDriver_stub 
+  SceDebugForDriver_stub
   #SceLibc_stub_weak
   SceThreadmgrForDriver_stub
   SceLibKernel_stub
@@ -80,7 +86,7 @@ target_link_libraries(kvdb
   SceDebugForDriver_stub
   SceDebugForKernel_stub_weak
   gcc
-  )
+)
 
 target_include_directories(kvdb PRIVATE src)
 
@@ -114,10 +120,10 @@ target_compile_definitions(vdb_kernel_stub PRIVATE -DGEN_WEAK_EXPORTS=0)
 add_library(vdb_user_stub STATIC ${USER_STUBS})
 target_compile_definitions(vdb_user_stub PRIVATE -DGEN_WEAK_EXPORTS=0)
 
-install (TARGETS vdb_kernel_stub vdb_user_stub
+install(TARGETS vdb_kernel_stub vdb_user_stub
   ARCHIVE DESTINATION lib
 )
 
-install (FILES ${CMAKE_SOURCE_DIR}/include/vdb.h
+install(FILES ${CMAKE_SOURCE_DIR}/include/vdb.h
   DESTINATION include
 )
